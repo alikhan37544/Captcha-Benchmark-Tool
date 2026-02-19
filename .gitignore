@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+.pytest_cache/
+
+# Data & results (user provides their own)
+data/
+results/
+
+# Models
+models/*.pth
+models/*.pt
+models/*.bin
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Env
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp

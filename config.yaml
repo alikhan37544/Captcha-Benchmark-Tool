@@ -1,0 +1,94 @@
+dataset_dir: ./data/captchas
+labels_file: ./data/labels.csv   # cols: id, value, blobname, createdat, updatedat
+output_dir: ./results
+
+# Prompt used for VLM / LLM-based models
+prompt: "What text is shown in this captcha image? Reply with ONLY the text characters, no punctuation, no explanation."
+
+models:
+  - name: "EasyOCR"
+    type: easyocr
+    enabled: true
+
+  - name: "Tesseract"
+    type: tesseract
+    # PSM 8: treat as single word. 7: single text line. 6: uniform block.
+    psm: 8
+    enabled: true
+
+  - name: "dots.ocr-1.5"
+    type: huggingface
+    model_id: rednote-hilab/dots.ocr-1.5
+    enabled: false
+
+  - name: "GLM-OCR"
+    type: huggingface
+    model_id: zai-org/GLM-OCR
+    enabled: false
+
+  - name: "ocr-captcha-v3"
+    type: huggingface
+    model_id: anuashok/ocr-captcha-v3
+    enabled: false
+
+  - name: "SmolVLM2"
+    type: huggingface
+    model_id: HuggingFaceTB/SmolVLM2-2.2B-Instruct
+    enabled: false
+
+  - name: "LFM2-VL-450M"
+    type: huggingface
+    model_id: LiquidAI/LFM2-VL-450M
+    enabled: false
+
+  - name: "MiniCPM-V-2.6"
+    type: huggingface
+    model_id: openbmb/MiniCPM-V-2_6
+    enabled: false
+
+  - name: "Qwen2.5-VL-7B"
+    type: huggingface
+    model_id: Qwen/Qwen2.5-VL-7B-Instruct
+    enabled: false
+
+  - name: "olmOCR-2"
+    type: huggingface
+    model_id: allenai/olmOCR-2-7B-1025
+    enabled: false
+
+  - name: "Moondream2"
+    type: huggingface
+    model_id: vikhyatk/moondream2
+    enabled: false
+
+  - name: "ocr-for-captcha"
+    type: huggingface
+    model_id: keras-io/ocr-for-captcha
+    enabled: false
+
+  - name: "nanoVLM"
+    type: huggingface
+    model_id: huggingface/nanoVLM
+    enabled: false
+
+  # --- LMStudio example ---
+  # - name: "MyLMStudioModel"
+  #   type: lmstudio
+  #   base_url: http://localhost:1234/v1
+  #   model_id: "local-model-name"   # as listed in LMStudio UI
+  #   enabled: false
+
+  # --- Generic OpenAI-compat (Ollama, OpenRouter, vLLM, etc.) ---
+  # - name: "OllamaLlava"
+  #   type: openai_compat
+  #   base_url: http://localhost:11434/v1
+  #   model_id: "llava:7b"
+  #   api_key: "ollama"
+  #   enabled: false
+
+  # --- Custom PyTorch checkpoint ---
+  # - name: "CustomCNN"
+  #   type: custom
+  #   model_path: ./models/cnn_model.pth
+  #   vocab: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  #   enabled: false
