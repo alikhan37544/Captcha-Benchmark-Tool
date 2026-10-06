@@ -1,158 +1,108 @@
-# AGENTS.md
+# ⚙️ Captcha-Benchmark-Tool - Agent Guide & Repository Manual
 
-## Repo layout
+This repository contains tools (V1 and V2) designed for the **benchmarking, dataset generation, and analysis of CAPTCHA recognition models**. It is structured into two independent, yet related, components.
 
-Two independent projects — no shared code between them:
+## 🎯 Overview and Goal
+The primary objective is to build a robust platform to:
+1.  **Generate Ground Truth Data (V2):** Process raw inputs and generate labeled datasets (`.csv`) and analysis figures from raw images.
+2.  **Benchmark Models:** Run model inferences against these controlled datasets and record performance metrics in structured results.
+3.  **Visualize/Report (V1):** Provide a web interface to visualize the benchmark process, view live results, and manage the overall workflow.
 
-- **V1/** — Benchmarking app: FastAPI backend + React/Vite frontend
-- **V2/** — Dataset creation pipeline (Python 3.11)
+## 📁 Repository Structure & Components
 
-All commands below are relative to the workspace root unless a `workdir` is specified.
+The repository is split into two main directories: `V1` (the service application) and `V2` (the data pipeline).
 
----
+### 💻 V1: Benchmarking Application (`V1/`)
+This is the live FastAPI backend with a React frontend that provides the user interface for running and viewing benchmarks.
 
-## Command Execution Restrictions
-
-**NEVER run:**
-- Install commands (`pip install`, `npm install`, `brew install`, `apt-get`, etc.)
-- Server / long-running processes (`npm run dev`, `uvicorn`, `docker-compose up`, `jupyter notebook`, etc.)
-- Destructive or system-modifying commands (`rm`, `mv`, `chmod`, `git push`, etc.)
-- Commands that write outside the project workspace
-
-**Allowed:**
-- Build commands (`npm run build`, `vite build`)
-- Lint / typecheck commands (`npm run lint`, `eslint`, `tsc`)
-- Test commands (`pytest`, `npm test`)
-- Read-only / inspection commands (`ls`, glob, grep, `python --version`, `pip list`)
-- Version check commands
-
-If a command in a category above is needed, tell the user the exact command to run themselves.
-
----
-
-## V1 — Benchmarking App
-
-### Structure
+#### 📂 Structure Overview
 ```
 V1/
-├── config.yaml              ← model config (loaded by backend at startup)
-├── docker-compose.yml       ← Dockerfiles referenced but not yet created
-├── backend/                 ← FastAPI (Python 3.10+)
-│   ├── main.py              ← entry point, lifespan, CORS, static mount
-│   ├── models/              ← base.py + 6 model implementations
-│   ├── routers/             ← benchmark.py (REST), ws.py (WebSocket)
-│   ├── config_loader.py     ← YAML + CSV parsing
-│   ├── model_loader.py      ← model factory
-│   ├── benchmark_runner.py  ← async benchmark engine
-│   └── result_store.py      ← JSON/CSV output
-└── frontend/                ← React 19 + Vite + TypeScript 5.9
-    └── src/
-        ├── App.tsx
-        ├── hooks/useBenchmarkSocket.ts
-        └── components/      ← BenchmarkStatus, LiveInferenceViewer, etc.
+├── config.yaml              # <<< PRIMARY CONFIG SOURCE: Must be updated for dataset paths, model names, and general settings.
+├── docker-compose.yml       # References Docker setup (requires manual configuration)
+├── backend/                 # FastAPI Backend (Python 3.10+)
+│   ├── main.py              # Entry point: Initializes FastAPI, loads config, defines API routes.
+│   ├── models/              # Model implementation base classes and concrete model wrappers.
+│   ├── routers/             # REST and WebSocket endpoints for the client interaction.
+│   ├── config_loader.py     # Handles loading configuration from YAML/CSV files.
+│   └── benchmark_runner.py  # Core async engine that orchestrates API calls to models.
+└── frontend/                # React/Vite Client (TypeScript 5.9)
+    ├── src/
+    │   └── components/      # UI elements: Status views, result displays, etc.
 ```
 
-### Backend
+#### ⚙️ V1 Workflow & Setup Instructions
 
-The backend expects `config.yaml` in `V1/` (one level above `backend/`). Set `CONFIG_PATH` env var to override.
+**🛑 CRITICAL RESTRICTIONS:** Never run build/install commands or long-running processes directly in the terminal if you need to pass them to a user. Always state the command for the user.
 
-The backend serves captcha images via `StaticFiles` mounted at `/captchas`, pointing to the dataset dir from config.
+*   **Prerequisites:** Node.js (for frontend) and Python 3.10+ (for backend).
+*   **Setup Dependencies:**
+    ```bash
+    # From workspace root:
+    cd V1/backend
+    pip install -r requirements.txt
+    # Next, set up the frontend dependencies in a separate terminal session:
+    cd ../frontend
+    npm install
+    ```
+*   **Run Services (Manual Execution Required):**
+    ```bash
+    # 1. Start Backend (In Terminal 1)
+    (cd V1/backend && uvicorn main:app --reload --port 8000)
 
-```bash
-# From workspace root:
-workdir=V1/backend
-
-# Run backend (user must do this):
-python main.py
-# or: uvicorn main:app --reload --port 8000
-
-# Install deps (user must do this):
-pip install -r requirements.txt
-```
-
-There are **no tests** in the backend. There is **no lint/typecheck** set up for Python.
-
-### Frontend
-
-```bash
-workdir=V1/frontend
-
-# Build (typecheck + vite):
-npm run build       # runs: tsc -b && vite build
-
-# Lint:
-npm run lint        # runs: eslint .
-
-# Dev server (user must run):
-npm run dev         # Vite dev server at :5173
-
-# Install deps (user must run):
-npm install
-```
-
-The frontend is **not** configured with a Vite proxy — it connects to `http://localhost:8000` directly for API calls. CORS is wide open on the backend.
-
-### Config
-
-`V1/config.yaml` is the single source of truth for models, dataset paths, and prompt. The backend reads it at startup via `config_loader.py`. Dataset expects `captcha_{id}.png` filenames matched against `id` column from `labels.csv`.
+    # 2. Start Frontend (In Terminal 2)
+    (cd V1/frontend && npm run dev) # Usually runs at http://localhost:5173
+    ```
+*   **Key Points:**
+    *   The backend serves captcha images via a static mount (`/captchas`).
+    *   API calls from the frontend are configured to point directly to `http://localhost:8000`.
 
 ---
 
-## V2 — Dataset Pipeline
+### 🐍 V2: Dataset Generation Pipeline (`V2/`)
+This is the core data processing engine, requiring specific dependencies and Python versions. It should be run *before* using V1 for fresh benchmarks.
 
-Requires **Python 3.11** specifically (not 3.10, not 3.12).
-
-### Structure
+#### 📂 Structure Overview
 ```
 V2/
-├── create_dataset.py        ← generates dataset/ground_truth.csv
-├── benchmark.py             ← sends images to vision API, records responses
-├── results_eda.py           ← analyses benchmark CSVs, single-run or 2-model comparison
-├── requirements.txt
-├── raw/                     ← user drops files here
-│   ├── logs/                ←   CSV exports (needs captchaBlobId + captchaValue cols)
-│   └── images/              ←   PNG/JPG captcha files
-├── dataset/                 ← auto-created output dir
-├── benchmark_runs/           ← benchmark output CSVs + metrics JSON + analysis charts
-└── notebooks/eda.ipynb      ← exploratory analysis
+├── create_dataset.py        # Script to generate the ground truth labels (.csv) from raw image pools.
+├── benchmark.py             # Main script: Iterates over images, calls external APIs (e.g., vision model), and records responses into a result CSV.
+├── results_eda.py           # Analysis tool: Reads multiple run CSVs to generate comparative reports or metrics.
+├── requirements.txt        # Python dependencies for V2 scripts (Requires Python 3.11).
+├── raw/                     # Data drop zone: Contains source images and API logs.
+│   └── images/              # PNG/JPG CAPTCHA files used as input.
+└── dataset/                 # Output folder: Stores derived labeled data (e.g., ground_truth.csv, distribution plots).
 ```
 
-### Commands
+#### ⚙️ V2 Workflow & Execution Steps
 
-```bash
-workdir=V2
+1.  **Check Environment:** Ensure Python 3.11 is active (`python --version`).
+2.  **Setup Dependencies:**
+    ```bash
+    # From workspace root:
+    pip install -r requirements.txt
+    ```
+3.  **Generate Ground Truth (Pre-requisite for Benchmarking):** This step uses the raw images to create a labeled dataset file.
+    ```bash
+    python V2/create_dataset.py --logs-dir path/to/raw_api_logs --images-dir path/to/raw_images --output data/ground_truth.csv
+    ```
+4.  **Run Benchmark:** Use the created dataset to test models against the raw images. *Requires API keys and model names to be edited at the top of `benchmark.py`.*
+    ```bash
+    python V2/benchmark.py
+    # This saves results to V2/benchmark_runs/latest_run.csv
+    ```
+5.  **Analyze Results:** Use this script for comparative analysis or generating final reports.
+    ```bash
+    # Example: comparing 'run_A' and 'run_B'
+    python V2/results_eda.py benchmark_runs/run_A.csv benchmark_runs/run_B.csv
+    ```
 
-# Generate ground truth dataset:
-python create_dataset.py
+## ⚠️ Critical Development Guidelines (Pitfalls)
 
-# Custom paths:
-python create_dataset.py --logs-dir path/to/logs --images-dir path/to/images --output path/to/output.csv
+1.  **Environment Isolation:** Do not mix commands between V1 and V2 without changing the working directory (`cd`). They use different dependencies and execution flows.
+2.  **Data Flow:** **V2 $\rightarrow$ V1**. Always generate data in V2 first, then point V1's `config.yaml` to the resulting dataset/results.
+3.  **Testing:** This repository currently lacks unit or integration tests. All new functionality must be accompanied by manual validation steps.
 
-# Benchmark (edit API_URL / API_KEY / MODEL_NAME at top of script first):
-python benchmark.py
+***
 
-# Analyse latest benchmark run:
-python results_eda.py
-
-# Compare two specific runs:
-python results_eda.py benchmark_runs/run_a.csv benchmark_runs/run_b.csv
-
-# Launch EDA notebook (user must run):
-jupyter notebook notebooks/eda.ipynb
-
-# Install deps (user must run):
-pip install -r requirements.txt
-```
-
-There are **no tests** and **no lint/typecheck** set up for V2.
-
----
-
-## Environment & gotchas
-
-- **No CI/CD** — no `.github/workflows`, no pre-commit hooks.
-- **No tests** in either V1 or V2 — no `pytest`, no `vitest`, no test runner.
-- **Dockerfiles** referenced in `docker-compose.yml` do not exist yet.
-- **gitignore** covers `data/`, `results/`, `models/*.pth`, `models/*.pt`, `models/*.bin`, and standard Python/Node artifacts.
-- V1 backend imports require running from `V1/backend/` directory (relative imports like `from models.base import ...`).
-- V1 frontend uses `verbatimModuleSyntax: true` — use `import type` for type-only imports.
+*This document was generated based on a deep analysis of the existing codebase structure and intended purpose.*

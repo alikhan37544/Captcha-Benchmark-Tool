@@ -9,8 +9,11 @@ dist/
 
 # Data & results (user provides their own)
 data/
-results/
+captcha_samples/
 benchmark_runs/
+V2/raw/
+V2/dataset/*.png
+V2/benchmark_runs/
 
 # Models
 models/*.pth
